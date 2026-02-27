@@ -1,0 +1,82 @@
+# Spellcaset Project Knowledge Base
+
+## What This Game Is
+
+A browser-based, turn-based spell-casting game built with React + Three.js. The player is a wizard who faces 21 levels of fantasy opponents. Spells are created by combining elements (Infinite Craft style: drag element chips onto each other in a workspace). Combined results are dragged into a cast zone to attack, heal, buff, or debuff. Bosses unlock new base elements; normal foes only use spells the player could also make.
+
+## Tech Stack
+
+- **Vite** -- fast dev server + bundler
+- **React 18** -- component-based UI
+- **@react-three/fiber + drei** -- Three.js 3D canvas layer (arena, particles, spell effects)
+- **Zustand** -- lightweight state management
+- **Framer Motion** -- UI animations (panels, transitions, floating numbers)
+- **Fonts**: Cinzel (headings), Inter (body)
+
+## File Map
+
+```
+package.json / vite.config.js / index.html
+public/img/                     -- Game art assets (portraits, logo, icons)
+src/
+  main.jsx / App.jsx            -- React entry + screen routing
+  stores/gameStore.js           -- Zustand store: state, combat, events
+  engine/
+    gameEngine.js               -- Combat logic, AI, status effects
+    elements.js                 -- 52 elements + STATUS_EMOJI + SPELL_TYPE_COLORS
+    recipes.js                  -- 110+ recipes + combineElements()
+    opponents.js                -- 21-level roster
+    portraits.js                -- Per-level enemy portrait mapping
+  components/
+    screens/                    -- MenuScreen, GameScreen, SuccessScreen, GameOverScreen
+    combat/                     -- BattleHeader, PlayerPanel, EnemyPanel, ArenaPanel, BattleLog, NarrativeEvent
+    workspace/                  -- DragContext, Workspace, WorkspaceChip, CastZone
+    sidebar/                    -- Sidebar (categorized by spell type), InventoryChip
+    ui/                         -- HpBar, StatusPill, EncounterBanner, TransitionCard, EncounterIntro, FloatingNumbers, RecipesModal
+  three/                        -- ArenaCanvas, ArenaScene, ArenaFloor, Pillars, SigilRing, AmbientParticles, ArenaLighting, SpellEffect
+  hooks/useDragDrop.js          -- High-perf ref-based pointer drag
+  styles/global.css             -- All styling
+```
+
+## Generated Game Art (public/img/)
+
+- wizard-portrait.png -- Player panel portrait
+- game-logo.png -- Menu screen logo
+- element-icons.png -- Fire/water/earth/wind icons
+- enemy-goblin.png -- Levels 1-3, 13, 15
+- enemy-boss.png -- Pyra (lvl 4), Vorak (lvl 18)
+- enemy-witch.png -- Morwen (lvl 5)
+- enemy-swamp.png -- Drip/Puddle/Bogwart/Marsh Lurker (lvl 6-8, 12)
+- enemy-troll.png -- Thrain/Gravel Fist (lvl 9-10)
+- enemy-wraith.png -- Sorrow/Howler (lvl 11, 16)
+- enemy-imp.png -- Vex (lvl 14)
+- enemy-shadow.png -- Maldred (lvl 17)
+- enemy-frost.png -- Seraphine/Rime (lvl 19-20)
+- enemy-lich.png -- Malachar (lvl 21)
+
+## Architecture
+
+### Render Layers
+- **Layer 0**: Three.js canvas (3D arena, particles, spell projectiles with per-type colors/trails)
+- **Layer 1**: React HTML overlay (combat UI, workspace, sidebar, overlays)
+
+### Performance
+- Drag system uses refs + requestAnimationFrame for ghost position (zero re-renders during drag)
+- Combat delays reduced to 280-450ms for snappy feel
+
+### Visual Effects
+- 3D spell projectiles with colored trails per type (fire=orange, heal=green, buff=blue, debuff=purple)
+- Impact burst particles (20 particles expanding outward)
+- Camera shake on damage impact
+- Dynamic lighting flash per spell type
+- Floating damage/heal numbers (Framer Motion)
+- Panel shake on hit, green glow on heal
+- Cinematic encounter intro with portrait reveal
+
+## Running The Game
+
+```
+npm install
+npm run dev      # http://localhost:5173
+npm run build
+```

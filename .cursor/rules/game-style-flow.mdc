@@ -1,0 +1,45 @@
+---
+description: Enforce game-like encounter flow and UI consistency for Spellcaset.
+alwaysApply: true
+---
+
+# Spellcaset Flow And UI Rule
+
+## Encounter Flow
+
+- Use explicit phases: `encounterIntro -> combat -> levelClear -> transition`.
+- Show short narrative beat at encounter start and boss-specific beats when available.
+- Keep transitions brief and readable; avoid blocking gameplay longer than necessary.
+
+## Combat Layout
+
+- Keep enemy focus visually at the top.
+- Keep actionable interaction controls grouped in lower sections.
+- Preserve clear hierarchy for level, turn, hp, and statuses.
+
+## Status Presentation
+
+- Keep status effects clear in both pills and telegraphs.
+- Use a fixed, consistent emoji mapping for status effects:
+  - `🛡️ shield`
+  - `💚 regeneration`
+  - `🧽 cleanse`
+  - `🐌 slow`
+  - `👁️ blind`
+  - `☠️ poison`
+  - `🔇 silence`
+  - `🧨 powerUp`
+  - `🪓 weaken`
+  - `🧱 defenseDown`
+
+## Emoji Policy
+
+- Use light emoji density overall.
+- Prioritize emojis in section labels, action affordances, and status-related UI.
+- Avoid emoji clutter in long logs and dense list views.
+
+## Motion And Feedback
+
+- Keep interaction feedback snappy and intentional.
+- Use consistent microinteraction patterns for combine, cast, hit, heal, and status apply.
+- Ensure visual effects do not obscure core gameplay information.

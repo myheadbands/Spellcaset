@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spellcaset</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <section id="menu-screen" class="screen active">
+        <div class="menu-orb" aria-hidden="true"></div>
+        <div class="menu-runes" aria-hidden="true">
+          <span>✦</span><span>✧</span><span>✦</span>
+        </div>
+        <h1 class="menu-title">Spellcaset</h1>
+        <p class="menu-subtitle">Combine elements, craft arcane spells, and rise through the tower.</p>
+        <div class="menu-pill-row">
+          <span class="menu-pill">Turn Based</span>
+          <span class="menu-pill">Element Fusion</span>
+          <span class="menu-pill">Boss Progression</span>
+        </div>
+        <div class="menu-controls">
+          <label for="start-element">Starting Element</label>
+          <select id="start-element">
+            <option value="fire">Fire</option>
+            <option value="water">Water</option>
+            <option value="earth">Earth</option>
+            <option value="wind">Wind</option>
+          </select>
+        </div>
+        <div class="menu-actions">
+          <button id="play-btn" class="btn-primary">Play</button>
+          <button id="recipes-btn" class="btn-secondary">Hack Recipes</button>
+        </div>
+      </section>
+
+      <section id="game-screen" class="screen">
+        <section id="encounter-banner" class="encounter-banner hidden">
+          <div id="encounter-banner-title" class="encounter-banner-title"></div>
+          <div id="encounter-banner-text" class="encounter-banner-text"></div>
+        </section>
+        <div id="transition-card" class="transition-card hidden">
+          <div id="transition-card-title" class="transition-card-title"></div>
+          <div id="transition-card-text" class="transition-card-text"></div>
+        </div>
+
+        <header class="battle-header">
+          <div class="panel side-panel player-panel">
+            <div class="combat-face">🧙</div>
+            <h3>Wizard</h3>
+            <div class="hp-bar"><div id="player-hp-fill"></div></div>
+            <span id="player-hp-text"></span>
+            <div id="player-statuses" class="status-list"></div>
+          </div>
+          <div class="panel middle arena-panel">
+            <div class="arena-mark">⚔️</div>
+            <h2 id="level-label"></h2>
+            <p id="turn-label"></p>
+            <p id="battle-log"></p>
+            <div id="narrative-event" class="narrative-event hidden">
+              <p id="narrative-event-text"></p>
+              <div class="menu-actions">
+                <button id="event-attack-life-btn" class="btn-primary">Strike Life Energy</button>
+                <button id="event-ignore-btn" class="btn-secondary">Hold Formation</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel side-panel enemy-panel">
+            <div class="combat-face">👹</div>
+            <h3 id="enemy-name"></h3>
+            <div class="hp-bar"><div id="enemy-hp-fill"></div></div>
+            <span id="enemy-hp-text"></span>
+            <div id="enemy-statuses" class="status-list"></div>
+          </div>
+        </header>
+
+        <main class="game-layout">
+          <section id="workspace" class="workspace">
+            <div class="arena-decor" aria-hidden="true">
+              <div class="pillar pillar-left"></div>
+              <div class="pillar pillar-right"></div>
+              <div class="sigil-ring"></div>
+            </div>
+            <div id="fx-layer" class="fx-layer"></div>
+          </section>
+
+          <aside class="sidebar">
+            <h3>Elements & Discovered Spells</h3>
+            <div id="inventory-list" class="chip-list"></div>
+
+            <h4>Seen From Enemy (Undiscovered)</h4>
+            <div id="seen-list" class="chip-list chip-list-muted"></div>
+
+            <div id="cast-zone">Drop Here To Cast</div>
+            <div id="status-tier-info" class="status-tier-info"></div>
+            <button id="recipes-in-game-btn">Hack Recipes</button>
+          </aside>
+        </main>
+      </section>
+
+      <section id="success-screen" class="screen">
+        <h2>Level Cleared</h2>
+        <p id="success-text"></p>
+        <div class="menu-actions">
+          <button id="heal-btn">Heal +25 HP</button>
+          <button id="next-btn">Continue</button>
+        </div>
+      </section>
+
+      <section id="gameover-screen" class="screen">
+        <h2>You Were Defeated</h2>
+        <p>The tower still stands. Return stronger.</p>
+        <div class="menu-actions">
+          <button id="retry-btn">Retry</button>
+          <button id="menu-btn">Main Menu</button>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="recipes-modal">
+      <h2>Hack Recipes</h2>
+      <p>All explicit combinations and spell types.</p>
+      <div id="recipes-list" class="recipes-list"></div>
+      <button id="close-recipes-btn">Close</button>
+    </dialog>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
