@@ -19,18 +19,17 @@ const MAX_PLAYER_HP = 180;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
-const DUEL_WS_URL = (() => {
-  // Prefer explicit Vite env for production / remote play
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_DUEL_WS_URL) {
-    return import.meta.env.VITE_DUEL_WS_URL;
-  }
-  if (typeof window === 'undefined') return '';
-  const { protocol, hostname } = window.location;
-  const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
-  const port = window.location.port || (protocol === 'https:' ? '443' : '80');
-  if (hostname === 'localhost' || hostname === '127.0.0.1') return 'ws://localhost:8765';
-  return `${wsProtocol}//${hostname}:${port}`;
-})();
+// Duel: HTTP polling (Vercel serverless has no WebSocket). Same origin /api/duel
+let duelPollTimerId = null;
+
+function duelApi(path = '', body = null) {
+  const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/api/duel${path}`;
+  return fetch(url, {
+    method: body ? 'POST' : 'GET',
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.json());
+}
 
 export const useGameStore = create((set, get) => ({
   screen: 'menu',
@@ -499,69 +498,88 @@ export const useGameStore = create((set, get) => ({
   // ---- Duel mode ----
   setGameMode: (mode) => set({ gameMode: mode }),
 
-  createDuelRoom: () => {
-    const wsUrl = DUEL_WS_URL || (typeof window !== 'undefined' && window.__DUEL_WS_URL__) || 'ws://localhost:8765';
-    const ws = new WebSocket(wsUrl);
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'create' }));
-    };
-    ws.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'room_created') {
-          set({
-            duelRoomCode: msg.code,
-            duelRole: 'host',
-            duelWs: ws,
-            duelConnected: true,
-            duelWaitingForOpponent: true,
-            duelOpponentJoined: false,
-            screen: 'duel_lobby',
-          });
-        } else if (msg.type === 'opponent_joined') {
-          set({ duelOpponentJoined: true, duelWaitingForOpponent: false });
-        } else if (msg.type === 'opponent_left') {
-          set({ duelBattleLog: 'Opponent left.', duelWaitingForOpponent: true, duelOpponentJoined: false });
-        } else {
-          get()._duelHandleMessage(msg, ws);
-        }
-      } catch (_) {}
-    };
-    ws.onclose = () => set({ duelConnected: false, duelWs: null });
-    ws.onerror = () => set({ duelConnected: false });
+  createDuelRoom: async () => {
+    try {
+      const data = await duelApi('', { action: 'create' });
+      if (data.code) {
+        set({
+          duelRoomCode: data.code,
+          duelRole: 'host',
+          duelWs: null,
+          duelConnected: true,
+          duelWaitingForOpponent: true,
+          duelOpponentJoined: false,
+          screen: 'duel_lobby',
+        });
+        get()._duelStartPolling();
+      } else {
+        set({ duelBattleLog: data.error || 'Failed to create room.', duelConnected: false });
+      }
+    } catch (e) {
+      set({ duelBattleLog: 'Could not reach server. Try again.', duelConnected: false });
+    }
   },
 
-  joinDuelRoom: (code) => {
-    const wsUrl = DUEL_WS_URL || (typeof window !== 'undefined' && window.__DUEL_WS_URL__) || 'ws://localhost:8765';
-    const ws = new WebSocket(wsUrl);
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'join', code: (code || '').toUpperCase().trim() }));
-    };
-    ws.onmessage = (e) => {
+  joinDuelRoom: async (code) => {
+    const c = (code || '').toUpperCase().trim();
+    try {
+      const data = await duelApi('', { action: 'join', code: c });
+      if (data.error) {
+        set({ duelBattleLog: data.error || 'Failed to join.', duelConnected: false });
+        return;
+      }
+      set({
+        duelRoomCode: c,
+        duelRole: 'guest',
+        duelWs: null,
+        duelConnected: true,
+        duelWaitingForOpponent: false,
+        duelOpponentJoined: true,
+        screen: 'duel_lobby',
+      });
+      get()._duelStartPolling();
+    } catch (e) {
+      set({ duelBattleLog: 'Could not reach server. Check the code.', duelConnected: false });
+    }
+  },
+
+  _duelStartPolling: () => {
+    if (duelPollTimerId) clearInterval(duelPollTimerId);
+    duelPollTimerId = setInterval(async () => {
+      const { duelRoomCode: code, duelRole: role, screen } = get();
+      if (!code || !role || screen === 'duel_win' || screen === 'duel_lose') return;
       try {
-        const msg = JSON.parse(e.data);
-        if (msg.type === 'error') {
-          set({ duelBattleLog: msg.message || 'Failed to join.', duelConnected: false });
-          return;
+        const data = await duelApi(`?code=${encodeURIComponent(code)}&role=${role}`);
+        if (data.error) return;
+        const state = get();
+        if (data.opponentJoined !== undefined && role === 'host' && !state.duelOpponentJoined && data.opponentJoined) {
+          set({ duelOpponentJoined: true, duelWaitingForOpponent: false });
         }
-        if (msg.type === 'joined') {
-          set({
-            duelRoomCode: msg.code,
-            duelRole: 'guest',
-            duelWs: ws,
-            duelConnected: true,
-            duelWaitingForOpponent: false,
-            duelOpponentJoined: true,
-            screen: 'duel_lobby',
+        if (data.state && !state.duelState && state.screen === 'duel_lobby') {
+          get()._duelHandleMessage({
+            type: 'start',
+            state: data.state,
+            hostElement: data.hostElement,
+            guestElement: data.guestElement,
           });
-        } else if (msg.type === 'opponent_left') {
-          set({ duelBattleLog: 'Opponent left.' });
+          if (duelPollTimerId) clearInterval(duelPollTimerId);
+          duelPollTimerId = null;
         }
-        get()._duelHandleMessage(msg, ws);
+        if (data.state && state.duelState && state.screen === 'duel_game') {
+          const prevTurn = state.duelState.turn;
+          if (data.state.turn !== prevTurn || data.gameOver) {
+            get()._duelHandleMessage({
+              type: 'state',
+              state: data.state,
+              log: data.lastLog || state.duelBattleLog,
+              spellId: data.lastSpellId,
+              direction: data.lastDirection,
+              gameOver: data.gameOver,
+            });
+          }
+        }
       } catch (_) {}
-    };
-    ws.onclose = () => set({ duelConnected: false, duelWs: null });
-    ws.onerror = () => set({ duelConnected: false });
+    }, 1500);
   },
 
   _duelHandleMessage: (msg, ws) => {
@@ -651,28 +669,56 @@ export const useGameStore = create((set, get) => ({
     }
   },
 
-  sendDuelReady: (element) => {
-    const ws = get().duelWs;
-    if (ws?.readyState === 1) {
-      ws.send(JSON.stringify({ type: 'ready', element: element || get().selectedStartElement }));
-      set({ duelMyElement: element || get().selectedStartElement });
-    }
+  sendDuelReady: async (element) => {
+    const state = get();
+    const code = state.duelRoomCode;
+    const role = state.duelRole;
+    const el = element || state.selectedStartElement;
+    if (!code || !role) return;
+    try {
+      const data = await duelApi('', { action: 'ready', code, role, element: el });
+      set({ duelMyElement: el });
+      if (data.state) {
+        get()._duelHandleMessage({
+          type: 'start',
+          state: data.state,
+          hostElement: data.hostElement,
+          guestElement: data.guestElement,
+        });
+        if (duelPollTimerId) clearInterval(duelPollTimerId);
+        duelPollTimerId = null;
+      }
+    } catch (_) {}
   },
 
-  sendDuelCast: (spellId) => {
+  sendDuelCast: async (spellId) => {
     const state = get();
     if (state.duelGameOver) return;
     const turn = state.duelState?.turn;
     const role = state.duelRole;
-    if (turn !== role) return;
+    const code = state.duelRoomCode;
+    if (turn !== role || !code) return;
     if (!state.player.discoveredSpells.has(spellId) && !state.player.unlockedElements.has(spellId)) return;
-    const ws = state.duelWs;
-    if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'cast', spellId }));
+    try {
+      const data = await duelApi('', { action: 'cast', code, role, spellId });
+      if (data.state) {
+        get()._duelHandleMessage({
+          type: 'state',
+          state: data.state,
+          log: data.log,
+          spellId: data.spellId,
+          direction: data.direction,
+          gameOver: data.gameOver,
+        });
+      }
+    } catch (_) {}
   },
 
   disconnectDuel: () => {
-    const ws = get().duelWs;
-    if (ws) ws.close();
+    if (duelPollTimerId) {
+      clearInterval(duelPollTimerId);
+      duelPollTimerId = null;
+    }
     set({
       duelRoomCode: null,
       duelRole: null,
