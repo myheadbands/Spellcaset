@@ -20,6 +20,10 @@ const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
 const DUEL_WS_URL = (() => {
+  // Prefer explicit Vite env for production / remote play
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_DUEL_WS_URL) {
+    return import.meta.env.VITE_DUEL_WS_URL;
+  }
   if (typeof window === 'undefined') return '';
   const { protocol, hostname } = window.location;
   const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
@@ -496,7 +500,7 @@ export const useGameStore = create((set, get) => ({
   setGameMode: (mode) => set({ gameMode: mode }),
 
   createDuelRoom: () => {
-    const wsUrl = typeof window !== 'undefined' && window.__DUEL_WS_URL__ ? window.__DUEL_WS_URL__ : 'ws://localhost:8765';
+    const wsUrl = DUEL_WS_URL || (typeof window !== 'undefined' && window.__DUEL_WS_URL__) || 'ws://localhost:8765';
     const ws = new WebSocket(wsUrl);
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: 'create' }));
@@ -528,7 +532,7 @@ export const useGameStore = create((set, get) => ({
   },
 
   joinDuelRoom: (code) => {
-    const wsUrl = typeof window !== 'undefined' && window.__DUEL_WS_URL__ ? window.__DUEL_WS_URL__ : 'ws://localhost:8765';
+    const wsUrl = DUEL_WS_URL || (typeof window !== 'undefined' && window.__DUEL_WS_URL__) || 'ws://localhost:8765';
     const ws = new WebSocket(wsUrl);
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: 'join', code: (code || '').toUpperCase().trim() }));
